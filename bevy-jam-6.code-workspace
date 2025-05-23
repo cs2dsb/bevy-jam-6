@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "bevy-jam-6",
+			"path": "."
+		}
+	],
+	"settings": {
+		"rust-analyzer.showUnlinkedFileNotification": false,
+		"git.ignoreLimitWarning": true,
+		"rust-analyzer.checkOnSave": true,
+		"files.associations": {
+			"*.rs": "rust"
+		},
+		"editor.quickSuggestions": {
+			"other": "on",
+			"comments": "on",
+			"strings": true
+		},
+	}
+}

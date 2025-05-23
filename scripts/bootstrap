@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+# Exit when any command fails
+set -o errexit
+
+# Exit when an undeclared variable is used
+set -o nounset
+
+# Exit when a piped command returns a non-zero exit code
+set -o pipefail
+
+# Installs the prerequisites for the project
+
+readonly repo_dir="$( cd $(dirname ${BASH_SOURCE}); cd ..; pwd )";
+readonly third_party_tools_dir="${repo_dir}/third_party/tools";
+
+readonly RED='\033[0;31m';
+readonly NC='\033[0m'; # No Color
+
+warn() { echo -e "${RED}$@${NC}" >&2; }
+die() { warn "$@"; exit 1; }
+
+cd $repo_dir
+mkdir -p "$third_party_tools_dir";
+
+readonly bindgen_version="0.2.92";
+
+sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+
+# 1 = dep name (just for printing)
+# 2 = test to check if it's installed
+# 3 = command to install the dep if it's not installed
+install_dep() {
+    local name="${1:-}";
+    local rc=`(eval $2 >/dev/null 2>&1); echo $?`
+    [ "$rc" == "0" ] && echo "${name} already installed" && return;
+    echo "Installing $1"
+    eval $3
+}
+
+# 1 = tool name (for printing and folder name)
+# 2 = test to check the tool is installed
+# 3 = url to fetch from
+# 4 = extract command
+install_tool() {
+    local name="${1:-}";
+    local test_cmd="${2:-}";
+    local url="${3:-}";
+    local extract_cmd="${4:-}";
+    [ "$extract_cmd" == "" ] && die "install_tool requires 4 arguments";
+
+    local rc=`(eval ${test_cmd} >/dev/null 2>&1); echo $?`;
+    [ "$rc" == "0" ] && echo "${name} already installed" && return;
+    echo "Installing ${name}";
+
+    local tool_dir="${third_party_tools_dir}/${name}";
+
+    # Clear out any old versions
+    rm -rf "${tool_dir}";
+
+    mkdir -p "${tool_dir}";
+    cd "${tool_dir}";
+    curl -O ${url};
+
+    local rc=`(eval ${extract_cmd} >/dev/null 2>&1); echo $?`;
+    [ "$rc" == "0" ] && echo "${name} installed" && return;
+    die "Error installing ${name}";
+}
+
+
+readonly sqlite3_bin_path="${third_party_tools_dir}/sqlite3/sqlite3";
+install_tool \
+    sqlite3 \
+    "test -s ${sqlite3_bin_path}" \
+    "https://sqlite.org/2024/sqlite-tools-linux-x64-3460000.zip" \
+    "unzip sqlite-tools-linux-x64-3460000.zip; rm sqlite-tools-linux-x64-3460000.zip"
+
+
+#install_dep "wasm32-unknown-unknown target" "rustup target list | grep -q 'wasm32-unknown-unknown (installed)'" "rustup target add wasm32-unknown-unknown"
+#install_dep "wasm-bindgen" "wasm-bindgen -V | grep -q $bindgen_version" "cargo install wasm-bindgen-cli --force --version $bindgen_version"
+install_dep "cargo-watch" "cargo watch -V" "cargo install cargo-watch"
+install_dep "cargo set-version" "cargo set-version -V" "cargo install cargo-edit --features vendored-openssl"
+install_dep "wasm-opt" "wasm-opt --version" "cargo install wasm-opt"
